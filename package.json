@@ -3,6 +3,8 @@
   "main": "./index.js",
   "type": "module",
   "dependencies": {
-    "jest-environment-jsdom": "^29.5.0"
+    "jest-environment-jsdom": "^29.5.0",
+    "fs-extra": "^8.1.0",
+    "jsdom": "^20.0.0"
   }
 }
