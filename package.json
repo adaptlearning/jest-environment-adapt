@@ -1,0 +1,8 @@
+{
+  "name": "jest-environment-adapt",
+  "main": "./index.js",
+  "type": "module",
+  "dependencies": {
+    "jest-environment-jsdom": "^29.5.0"
+  }
+}
