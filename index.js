@@ -8,40 +8,11 @@ class CustomResourceLoader extends jsdom.ResourceLoader {
   fetch(resourceUrl, options) {
     if (resourceUrl.startsWith(url)) {
       const resourcePath = resourceUrl.slice(url.length);
-      if (resourcePath === 'libraries/bowser.js') {
-        return Promise.resolve(`
-          define(() => {
-            return {
-              parse: function() {
-                const config = {
-                  browser: {
-                    name: '',
-                    version: ''
-                  },
-                  os: {
-                    name: '',
-                    version: ''
-                  },
-                  engine: {
-                    name: '',
-                    version: ''
-                  },
-                  platform: {
-                    name: '',
-                    version: ''
-                  }
-                };
-                return config;
-              }
-
-            }
-          })
-        `);
-      }
       if (!['libraries/require.min.js'].includes(resourcePath) && resourcePath.startsWith('libraries/')) {
         const library = fs.readFileSync('./build/' + resourcePath);
         const instance = CustomEnvironment.getInstance()
         if (instance) {
+          // Hack to define moduleIds for unnamed define statements
           instance.dom.window.moduleId = resourcePath;
         }
         return Promise.resolve(library);
@@ -52,7 +23,6 @@ class CustomResourceLoader extends jsdom.ResourceLoader {
       }
       return fs.readFile('./build/' + resourcePath);
     }
-    console.log("err", resourceUrl)
     return super.fetch(resourceUrl, options);
   }
 }
@@ -64,7 +34,7 @@ class CustomEnvironment extends TestEnvironment {
     const opt = { ...options, projectConfig: { ...options.projectConfig } }
     opt.projectConfig.testEnvironmentOptions = {
       html: fs.readFileSync('./build/scorm_test_harness.html').toString(),
-      url: url + '#',
+      url: url + '#/',
       pretendToBeVisual: true,
       runScripts: 'dangerously',
       resources: new CustomResourceLoader(),
