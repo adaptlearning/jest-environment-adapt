@@ -7,13 +7,10 @@ Supports loading Adapt into a node jsdom environment for unit testing.
 ### Config in `jest.config.json`
 ```json
 {
-  // The test environment that will be used for testing
   "testEnvironment": "jest-environment-adapt",
-
-  // Options that will be passed to the testEnvironment
   "testEnvironmentOptions": {
     "pluginsMockFile": "./test/unit/__mocks__/plugins.js"
-  },
+  }
 }
 ```
 
