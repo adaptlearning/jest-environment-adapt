@@ -1,15 +1,23 @@
 import fs from 'fs-extra';
+import path from 'path';
 import { TestEnvironment } from 'jest-environment-jsdom';
 import jsdom from 'jsdom';
 
 const url = 'https://example.org/';
 
 class CustomResourceLoader extends jsdom.ResourceLoader {
+
+  constructor(options) {
+    super(options);
+    this.options = options;
+  }
+
   fetch(resourceUrl, options) {
+    const outputDir = this.options.outputDir.replace(/\\/g, '/');
     if (resourceUrl.startsWith(url)) {
       const resourcePath = resourceUrl.slice(url.length);
       if (!['libraries/require.min.js'].includes(resourcePath) && resourcePath.startsWith('libraries/')) {
-        const library = fs.readFileSync('./build/' + resourcePath);
+        const library = fs.readFileSync(path.join(outputDir, resourcePath));
         const instance = CustomEnvironment.getInstance()
         if (instance) {
           // Hack to define moduleIds for unnamed define statements
@@ -21,7 +29,7 @@ class CustomResourceLoader extends jsdom.ResourceLoader {
         // Signal to start tests
         return Promise.resolve('window.__JEST_LOAD_ADAPT = true');
       }
-      return fs.readFile('./build/' + resourcePath);
+      return fs.readFile(path.join(outputDir, resourcePath));
     }
     return super.fetch(resourceUrl, options);
   }
@@ -32,15 +40,19 @@ class CustomEnvironment extends TestEnvironment {
     const virtualConsole = new jsdom.VirtualConsole();
     virtualConsole.sendTo(console);
     const opt = { ...options, projectConfig: { ...options.projectConfig } }
+    const testEnvironmentOptions = opt.projectConfig.testEnvironmentOptions;
+    const outputDir = testEnvironmentOptions.outputDir.replace(/\\/g, '/');
     opt.projectConfig.testEnvironmentOptions = {
-      html: fs.readFileSync('./build/scorm_test_harness.html').toString(),
+      ...testEnvironmentOptions,
+      html: fs.readFileSync(path.join(outputDir, 'index.html')).toString(),
       url: url + '#/',
       pretendToBeVisual: true,
       runScripts: 'dangerously',
-      resources: new CustomResourceLoader(),
+      resources: new CustomResourceLoader(testEnvironmentOptions),
       virtualConsole
     };
     super(opt, context);
+    this.testEnvironmentOptions = opt.projectConfig.testEnvironmentOptions;
     this.url = url
     CustomEnvironment._instance = this;
   }
@@ -58,7 +70,8 @@ class CustomEnvironment extends TestEnvironment {
   }
 
   async mockPlugins() {
-    const buildJSON = fs.readJSONSync('./build/adapt/js/build.min.js');
+    const outputDir = this.testEnvironmentOptions.outputDir.replace(/\\/g, '/');
+    const buildJSON = fs.readJSONSync(path.join(outputDir, 'adapt/js/build.min.js'));
     const getPluginType = plugin => {
       return ['component', 'extension', 'menu', 'theme'].find(type => {
         return (plugin[type] || plugin.keywords?.includes(`adapt-${type}`));
@@ -72,10 +85,12 @@ class CustomEnvironment extends TestEnvironment {
       if (plugin.main[0] !== '/') plugin.main = `/${plugin.main}`;
       pluginsMock.push(`import '${type}${addS ? 's' : ''}/${plugin.name}${plugin.main}';`);
     }
-    fs.writeFileSync('./__mocks__/plugins.js', pluginsMock.join('\n') + '\n');
+    const { pluginsMockFile } = this.testEnvironmentOptions;
+    fs.writeFileSync(pluginsMockFile, pluginsMock.join('\n') + '\n');
   }
 
   async redirectXMLHttpRequest(window = this.dom.window) {
+    const outputDir = this.testEnvironmentOptions.outputDir.replace(/\\/g, '/');
     window.XMLHttpRequest = function() {
       this._callbacks = {
         onload: [],
@@ -102,7 +117,7 @@ class CustomEnvironment extends TestEnvironment {
         return true;
       },
       send: async function() {
-        const data = (await fs.readFile('./build/' + this.url)).toString();
+        const data = (await fs.readFile(path.join(outputDir, this.url))).toString();
         this._responseText = data;
         this._readyState = 4;
         this._status = 200;
