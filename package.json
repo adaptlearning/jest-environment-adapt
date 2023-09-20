@@ -1,6 +1,7 @@
 {
   "name": "jest-environment-adapt",
   "version": "1.0.0",
+  "homepage": "https://github.com/adaptlearning/jest-environment-adapt",
   "main": "./index.js",
   "type": "module",
   "dependencies": {
